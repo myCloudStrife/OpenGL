@@ -11,17 +11,15 @@
 
 constexpr double MOVE_SPEED = 3.0;
 constexpr double MOVE_SPEED_WITH_SHIFT = 9.0;
-constexpr double ROTATE_SPEED = 0.5;
-
+constexpr double ROTATE_SPEED = 1.5;
 
 static GLsizei WIDTH = 768, HEIGHT = 512; //размеры окна
 
 using namespace LiteMath;
 
-float3 g_camPos(0, 0, 5);
+float3 position(0, 0, 5);
 float cam_rot[2] = { 0, 0 };
 int mx = 0, my = 0;
-
 
 void windowResize(GLFWwindow* window, int width, int height) {
     WIDTH  = width;
@@ -29,8 +27,8 @@ void windowResize(GLFWwindow* window, int width, int height) {
 }
 
 static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
-    xpos *= -2.0f;
-    ypos *= 2.0f;
+    xpos *= -ROTATE_SPEED;
+    ypos *= ROTATE_SPEED;
 
     int x1 = int(xpos);
     int y1 = int(ypos);
@@ -48,6 +46,43 @@ static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
     my = int(ypos);
 }
 
+void control(GLFWwindow* window) {
+	static double lastTime = glfwGetTime(), currentTime, deltaTime;
+	double speed = MOVE_SPEED;
+	currentTime = glfwGetTime();
+	deltaTime = currentTime - lastTime;
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+		speed = MOVE_SPEED_WITH_SHIFT;
+	} else {
+		speed = MOVE_SPEED;
+	}
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+		position.z -= deltaTime * speed * cos(cam_rot[1]);
+		position.x += deltaTime * speed * sin(cam_rot[1]);
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+		position.z += deltaTime * speed * cos(cam_rot[1]);
+		position.x -= deltaTime * speed * sin(cam_rot[1]);
+	}
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+		position.x += deltaTime * speed * cos(cam_rot[1]);
+		position.z += deltaTime * speed * sin(cam_rot[1]);
+	}
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+		position.x -= deltaTime * speed * cos(cam_rot[1]);
+		position.z -= deltaTime * speed * sin(cam_rot[1]);
+	}
+	if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+		position.y += deltaTime * speed;
+	}
+	if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+		position.y -= deltaTime * speed;
+	}
+	lastTime = currentTime;
+}
 
 int initGL() {
     int res = 0;
@@ -76,7 +111,7 @@ int main(int argc, char** argv) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGL ray marching sample",
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGL ray marching task",
             nullptr, nullptr);
     if (window == nullptr) {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -140,45 +175,12 @@ int main(int argc, char** argv) {
         glBindVertexArray(0);
     }
 
-    double lastTime = glfwGetTime(), currentTime, deltaTime;
-    double speed = MOVE_SPEED;
-    float3 position = float3(0, 0, 4);
 
     //цикл обработки сообщений и отрисовки сцены каждый кадр
-    while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS) {
+    while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        currentTime = glfwGetTime();
-        deltaTime = currentTime - lastTime;
-        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-            speed = MOVE_SPEED_WITH_SHIFT;
-        } else {
-            speed = MOVE_SPEED;
-        }
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-            position.z -= deltaTime * speed * cos(cam_rot[1]);
-            position.x += deltaTime * speed * sin(cam_rot[1]);
-        }
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-            position.z += deltaTime * speed * cos(cam_rot[1]);
-            position.x -= deltaTime * speed * sin(cam_rot[1]);
-        }
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-            position.x += deltaTime * speed * cos(cam_rot[1]);
-            position.z += deltaTime * speed * sin(cam_rot[1]);
-        }
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-            position.x -= deltaTime * speed * cos(cam_rot[1]);
-            position.z -= deltaTime * speed * sin(cam_rot[1]);
-        }
-        if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-            position.y += deltaTime * speed;
-        }
-        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
-            position.y -= deltaTime * speed;
-        }
-        lastTime = currentTime;
-
+        control(window);
 
         //очищаем экран каждый кадр
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);               GL_CHECK_ERRORS;
@@ -188,8 +190,6 @@ int main(int argc, char** argv) {
 
         float4x4 camRotMatrix = mul(rotate_Y_4x4(-cam_rot[1]),
                 rotate_X_4x4(+cam_rot[0]));
-        float4x4 camTransMatrix = translate4x4(position);
-        float4x4 rayMatrix = mul(camRotMatrix, camTransMatrix);
 
         program.SetUniform("g_position", position);
         program.SetUniform("g_rotate", camRotMatrix);
