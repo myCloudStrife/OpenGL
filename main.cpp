@@ -7,7 +7,8 @@
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
 #include <random>
-
+#include <vector>
+#include <string>
 
 constexpr double MOVE_SPEED = 3.0;
 constexpr double MOVE_SPEED_WITH_SHIFT = 9.0;
@@ -47,41 +48,41 @@ static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
 }
 
 void control(GLFWwindow* window) {
-	static double lastTime = glfwGetTime(), currentTime, deltaTime;
-	double speed = MOVE_SPEED;
-	currentTime = glfwGetTime();
-	deltaTime = currentTime - lastTime;
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-	}
-	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-		speed = MOVE_SPEED_WITH_SHIFT;
-	} else {
-		speed = MOVE_SPEED;
-	}
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-		position.z -= deltaTime * speed * cos(cam_rot[1]);
-		position.x += deltaTime * speed * sin(cam_rot[1]);
-	}
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-		position.z += deltaTime * speed * cos(cam_rot[1]);
-		position.x -= deltaTime * speed * sin(cam_rot[1]);
-	}
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-		position.x += deltaTime * speed * cos(cam_rot[1]);
-		position.z += deltaTime * speed * sin(cam_rot[1]);
-	}
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-		position.x -= deltaTime * speed * cos(cam_rot[1]);
-		position.z -= deltaTime * speed * sin(cam_rot[1]);
-	}
-	if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-		position.y += deltaTime * speed;
-	}
-	if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
-		position.y -= deltaTime * speed;
-	}
-	lastTime = currentTime;
+    static double lastTime = glfwGetTime(), currentTime, deltaTime;
+    double speed = MOVE_SPEED;
+    currentTime = glfwGetTime();
+    deltaTime = currentTime - lastTime;
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+        speed = MOVE_SPEED_WITH_SHIFT;
+    } else {
+        speed = MOVE_SPEED;
+    }
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        position.z -= deltaTime * speed * cos(cam_rot[1]);
+        position.x += deltaTime * speed * sin(cam_rot[1]);
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        position.z += deltaTime * speed * cos(cam_rot[1]);
+        position.x -= deltaTime * speed * sin(cam_rot[1]);
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        position.x += deltaTime * speed * cos(cam_rot[1]);
+        position.z += deltaTime * speed * sin(cam_rot[1]);
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        position.x -= deltaTime * speed * cos(cam_rot[1]);
+        position.z -= deltaTime * speed * sin(cam_rot[1]);
+    }
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        position.y += deltaTime * speed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+        position.y -= deltaTime * speed;
+    }
+    lastTime = currentTime;
 }
 
 int initGL() {
@@ -98,6 +99,108 @@ int initGL() {
     std::cout << "GLSL: "     << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
     return 0;
+}
+
+GLuint load_tga_custom(char* t_file) {
+    // Below variables to hold data we will need.
+    FILE *_file;
+    long size;
+    int color;
+    unsigned char header[18];
+
+    // Open texture file in RB mode (Read/Binary)
+    _file = fopen(t_file, "rb");
+
+    // If unavailable, then return 0
+    if (!_file) {
+        return 0;
+    }
+
+    // Otherwise, get header from TGA
+    fread(header, 1, sizeof(header), _file);
+
+    // If not RGB image, return 0
+    if (header[2] != 2 || header[16] != 24) {
+        return 0;
+    }
+
+    int width = header[13] * 256 + header[12];
+    int height = header[15] * 256 + header[14];
+
+    // Compute how many bits per texture pixel this TGA has available.
+    // Convert this data to channels amount, e.g. 3 or 4 channels (RGB or RGBA)
+    color = header[16] / 8;
+
+    // Get array size to hold image. We compute total amount of pixels, i.e. width * height, after that we
+    // need to allocate space for each pixel, so we multiply previous result with bits per pixel variable
+    size = width * height * color;
+
+    // After we know the size of image data array, we declare it
+    unsigned char *image = new unsigned char[sizeof(unsigned char) * size];
+
+    // Read pixel data from image to our image array
+    fread(image, sizeof(unsigned char), size, _file);
+
+    // Close file after done
+    fclose(_file);
+
+    // Declare variable to hold texture ID
+    GLuint tex_id;
+
+    // Generate texture and return it's ID
+    glGenTextures(1, &tex_id);
+
+    // And bind it
+    glBindTexture(GL_TEXTURE_2D, tex_id);
+
+    // Give the image to OpenGL
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, image);
+
+    delete [] image;
+
+    // Set texture mapping mode
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    // Set texture filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // If everything is OK, return txeture ID then.
+    return tex_id;
+}
+
+unsigned int loadCubemap(vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
 }
 
 int main(int argc, char** argv) {
@@ -174,7 +277,7 @@ int main(int argc, char** argv) {
 
         glBindVertexArray(0);
     }
-
+    glfw
 
     //цикл обработки сообщений и отрисовки сцены каждый кадр
     while (!glfwWindowShouldClose(window)) {
@@ -191,6 +294,9 @@ int main(int argc, char** argv) {
         float4x4 camRotMatrix = mul(rotate_Y_4x4(-cam_rot[1]),
                 rotate_X_4x4(+cam_rot[0]));
 
+        float time = glfwGetTime();
+
+        program.SetUniform("g_time", time);
         program.SetUniform("g_position", position);
         program.SetUniform("g_rotate", camRotMatrix);
         program.SetUniform("g_screenWidth", WIDTH);

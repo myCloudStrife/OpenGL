@@ -23,6 +23,8 @@ layout(location = 0) out vec4 fragColor;
 uniform int g_screenWidth;
 uniform int g_screenHeight;
 
+uniform float g_time;
+
 uniform mat4 g_rotate;
 uniform vec3 g_position;
 
@@ -51,17 +53,18 @@ float distHexPrism2(vec3 p, vec2 h) {
 }
 
 float distTerrain(vec3 p) {
-    return p.y + 2;
+    float dmin = 1e38;
+    dmin = min(dmin, distHexPrism2((p - vec3(0, -4, 1)).xzy, vec2(1, 2)));
+    dmin = min(dmin, distHexPrism2((p - vec3(0, -3.7, -1)).xzy, vec2(1, 2)));
+    dmin = min(dmin, distHexPrism2((p - vec3(2, -3.85, 0)).xzy, vec2(1, 2)));
+    dmin = min(dmin, distHexPrism2((p - vec3(2, -3.5, 2)).xzy, vec2(1, 2)));
+    return dmin;
 }
 
 float distScene(vec3 p) {
     float dmin = 1e38;
     dmin = min(dmin, distSphere(p - vec3(0, 0, -1), 1));
     dmin = min(dmin, distRoundBox(p - vec3(5, 0, 0), vec3(1, 1, 2), 0.05));
-    dmin = min(dmin, distHexPrism2((p - vec3(0, -2, 1)).xzy, vec2(1, 0.5)));
-    dmin = min(dmin, distHexPrism2((p - vec3(0, -1.7, -1)).xzy, vec2(1, 0.5)));
-    dmin = min(dmin, distHexPrism2((p - vec3(2, -1.85, 0)).xzy, vec2(1, 0.5)));
-    dmin = min(dmin, distHexPrism2((p - vec3(2, -1.5, 2)).xzy, vec2(1, 0.5)));
     dmin = min(dmin, distTerrain(p));
     return dmin;
 }
@@ -115,24 +118,58 @@ vec3 illumination(vec3 p, vec3 eye_dir) {
     lights[1].intensity = vec3(1, 1, 1);
     
     mat3 k;
+    float shininess;
     if (distTerrain(p) < EPSILON * 2) {
+        if (distHexPrism2((p - vec3(0, -4, 1)).xzy, vec2(1, 2)) < EPSILON * 2) {
+            k = mat3(
+                    0.3, 0.15, 0.15,
+                    0.7, 0.4, 0.4,
+                    0.1, 0.1, 0.1
+            );
+            k[0] += vec3(0.3, 0.05, 0.05) * sin(g_time + 2.1);
+            shininess = 60;
+        } else if (distHexPrism2((p - vec3(0, -3.7, -1)).xzy, vec2(1, 2)) < EPSILON * 2) {
+            k = mat3(
+                    0.2, 0.2, 0.15,
+                    0.5, 0.5, 0.35,
+                    0.1, 0.1, 0.1
+            );
+            k[0] += vec3(0.2, 0.2, 0.05) * sin(g_time);
+            shininess = 60;
+        } else if (distHexPrism2((p - vec3(2, -3.85, 0)).xzy, vec2(1, 2)) < EPSILON * 2) {
+            k = mat3(
+                    0.05, 0.15, 0.3,
+                    0.3, 0.4, 0.7,
+                    0.1, 0.1, 0.1
+            );
+            k[0] += vec3(0.05, 0.05, 0.3) * sin(g_time - 2.1);
+            shininess = 60;
+        } else {
+            k = mat3(
+                    0.05375, 0.05, 0.06625,
+                    0.18275, 0.17, 0.22525,
+                    0.332741, 0.328634, 0.346435
+            );
+            shininess = 30;
+        }
+    } else {
         k = mat3(
-                0, 0.7, 0,
+                0, 0.1, 0,
                 0.1, 0.35, 0.1,
                 0.45, 0.55, 0.45
         );
-    } else {
         k = mat3(
                 0, 0.05, 0.05,
                 0.4, 0.5, 0.5,
                 0.04, 0.7, 0.7
         );
+        shininess = 25;
     }
-    vec3 color = k[0] * vec3(0.5, 0.5, 0.5);
+    vec3 color = k[0];
     for (int i = 0; i < LIGHTS_NUM; ++i) {
         float d = getShortDistance(lights[i].pos, normalize(p - lights[i].pos));
         if (d > length(p - lights[i].pos) - EPSILON * 10) {
-            color += illumPhong(k[1], k[2], 25, p, lights[i].pos, lights[i].intensity, eye_dir);
+            color += illumPhong(k[1], k[2], shininess, p, lights[i].pos, lights[i].intensity, eye_dir);
         }
     }
     return color;
@@ -179,10 +216,10 @@ void main(void) {
         fragColor = g_bgColor;
         return;
     }
-	
-	float alpha = 1.0f;
-	float3 color = RayMarchConstantFog(tmin, tmax, alpha);
-	fragColor = float4(color,0)*(1.0f-alpha) + g_bgColor*alpha;*/
+
+    float alpha = 1.0f;
+    float3 color = RayMarchConstantFog(tmin, tmax, alpha);
+    fragColor = float4(color,0)*(1.0f-alpha) + g_bgColor*alpha;*/
 
 }
 
