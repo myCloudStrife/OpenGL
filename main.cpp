@@ -101,7 +101,7 @@ int initGL() {
     return 0;
 }
 
-GLuint load_tga_custom(char* t_file) {
+unsigned char * load_tga_custom(const char *t_file, int & width, int & height) {
     // Below variables to hold data we will need.
     FILE *_file;
     long size;
@@ -121,11 +121,12 @@ GLuint load_tga_custom(char* t_file) {
 
     // If not RGB image, return 0
     if (header[2] != 2 || header[16] != 24) {
+        printf("here %d %d\n", header[2], header[16]);
         return 0;
     }
 
-    int width = header[13] * 256 + header[12];
-    int height = header[15] * 256 + header[14];
+    width = header[13] * 256 + header[12];
+    height = header[15] * 256 + header[14];
 
     // Compute how many bits per texture pixel this TGA has available.
     // Convert this data to channels amount, e.g. 3 or 4 channels (RGB or RGBA)
@@ -143,7 +144,8 @@ GLuint load_tga_custom(char* t_file) {
 
     // Close file after done
     fclose(_file);
-
+    return image;
+/*
     // Declare variable to hold texture ID
     GLuint tex_id;
 
@@ -168,32 +170,33 @@ GLuint load_tga_custom(char* t_file) {
     glGenerateMipmap(GL_TEXTURE_2D);
 
     // If everything is OK, return txeture ID then.
-    return tex_id;
+    return tex_id;*/
 }
 
-unsigned int loadCubemap(vector<std::string> faces)
+GLuint loadCubemap(std::vector<std::string> faces)
 {
-    unsigned int textureID;
+    GLuint textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
 
-    int width, height, nrChannels;
+    int width, height;
     for (unsigned int i = 0; i < faces.size(); i++)
     {
-        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        unsigned char *data = load_tga_custom(faces[i].c_str(), width, height);
         if (data)
         {
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+                         0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data
             );
-            stbi_image_free(data);
+            delete [] data;
         }
         else
         {
             std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
-            stbi_image_free(data);
+            delete [] data;
         }
     }
+
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -239,6 +242,16 @@ int main(int argc, char** argv) {
         gl_error = glGetError();
     }
 
+    std::vector<std::string> faces = {
+        "texture/my_darkskies_ft.tga",
+        "texture/my_darkskies_bk.tga",
+        "texture/my_darkskies_dn.tga",
+        "texture/my_darkskies_up.tga",
+        "texture/my_darkskies_rt.tga",
+        "texture/my_darkskies_lf.tga"
+    };
+    GLuint cubemapTexture = loadCubemap(faces);
+
     //создание шейдерной программы из двух файлов с исходниками шейдеров
     //используется класс-обертка ShaderProgram
     std::unordered_map<GLenum, std::string> shaders;
@@ -276,8 +289,9 @@ int main(int argc, char** argv) {
         glVertexAttribPointer(vertexLocation, 2, GL_FLOAT, GL_FALSE, 0, 0);                            GL_CHECK_ERRORS;
 
         glBindVertexArray(0);
+
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
     }
-    glfw
 
     //цикл обработки сообщений и отрисовки сцены каждый кадр
     while (!glfwWindowShouldClose(window)) {

@@ -28,6 +28,8 @@ uniform float g_time;
 uniform mat4 g_rotate;
 uniform vec3 g_position;
 
+uniform samplerCube skybox;
+
 vec3 EyeRayDir(vec2 coord, vec2 size) {
     float fov = 3.141592654f / 2.0f; //90 degrees
     vec3 ray_dir = vec3(coord - size / 2.0f, -size.x / tan(fov / 2.0f));
@@ -65,7 +67,7 @@ float distScene(vec3 p) {
     float dmin = 1e38;
     dmin = min(dmin, distSphere(p - vec3(0, 0, -1), 1));
     dmin = min(dmin, distRoundBox(p - vec3(5, 0, 0), vec3(1, 1, 2), 0.05));
-    dmin = min(dmin, distTerrain(p));
+    //dmin = min(dmin, distTerrain(p));
     return dmin;
 }
 
@@ -169,7 +171,8 @@ vec3 illumination(vec3 p, vec3 eye_dir) {
     for (int i = 0; i < LIGHTS_NUM; ++i) {
         float d = getShortDistance(lights[i].pos, normalize(p - lights[i].pos));
         if (d > length(p - lights[i].pos) - EPSILON * 10) {
-            color += illumPhong(k[1], k[2], shininess, p, lights[i].pos, lights[i].intensity, eye_dir);
+            color += illumPhong(k[1], k[2], shininess, p,
+                    lights[i].pos, lights[i].intensity, eye_dir);
         }
     }
     return color;
@@ -205,7 +208,9 @@ void main(void) {
             //fragColor = vec4(vec3(0.5, 0.5, 0.75) / (dist * dist), 1);
         }*/
     } else {
-        fragColor = vec4(0, 0, 0, 1);
+        ray_dir.y = -ray_dir.y;
+        fragColor = texture(skybox, ray_dir);
+        //fragColor = vec4(0, 0, 0, 1);
     }
     
     /*float tmin = 1e38f;
