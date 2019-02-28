@@ -18,7 +18,7 @@ static GLsizei WIDTH = 768, HEIGHT = 512; //размеры окна
 
 using namespace LiteMath;
 
-float3 position(0, 0, 5);
+float3 position(0, 2, 7);
 float cam_rot[2] = { 0, 0 };
 int mx = 0, my = 0;
 
@@ -186,8 +186,7 @@ GLuint loadCubemap(std::vector<std::string> faces)
         if (data)
         {
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                         0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data
-            );
+                         0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
             delete [] data;
         }
         else

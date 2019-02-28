@@ -9,6 +9,7 @@
 const float EPSILON = 0.0001;
 const float MAX_DISTANCE = 50.0;
 const int MAX_STEP = 1024;
+const int MAX_REFLECTION = 10;
 const int LIGHTS_NUM = 2;
 
 struct Light {
@@ -41,7 +42,19 @@ float distSphere(vec3 p, float r) {
 }
 
 float distRoundBox(vec3 p, vec3 b, float r) {
-  return length(max(abs(p) - b, 0)) - r;
+    return length(max(abs(p) - b, 0)) - r;
+}
+
+float length8(vec2 p) {
+    vec2 pp = p * p;
+    vec2 p4 = pp * pp;
+    vec2 p8 = p4 * p4;
+    return pow(p8.x + p8.y, 0.125);
+}
+
+float distTorus82(vec3 p, vec2 t) {
+    vec2 q = vec2(length(p.xz) - t.x, p.y);
+    return length8(q) - t.y;
 }
 
 float distHexPrism(vec3 p, vec2 h) {
@@ -63,17 +76,34 @@ float distTerrain(vec3 p) {
     return dmin;
 }
 
+float distMirror(vec3 p) {
+    return distSphere(p - vec3(0, 2, 0), 1);
+            //distRoundBox(p - vec3(2, 5, -1), vec3(2, 0.5, 2), 0.05));
+}
+
+vec3 rotateX(vec3 p, float phi) {
+    return vec3(p.x, p.y * cos(phi) - p.z * sin(phi), p.z * cos(phi) + p.y * sin(phi));
+}
+
+float distRings(vec3 p) {
+    return min(distTorus82(rotateX(p - vec3(0, 2, 0), -0.5), vec2(3, 0.15)),
+            distTorus82(rotateX(p - vec3(0, 2, 0), -1), vec2(3, 0.15)));
+}
+
 float distScene(vec3 p) {
     float dmin = 1e38;
-    dmin = min(dmin, distSphere(p - vec3(0, 0, -1), 1));
-    dmin = min(dmin, distRoundBox(p - vec3(5, 0, 0), vec3(1, 1, 2), 0.05));
-    //dmin = min(dmin, distTerrain(p));
+    //dmin = min(dmin, distSphere(p - vec3(0, 0, -1), 1));
+    dmin = min(dmin, distRings(p));
+    //dmin = min(dmin, distTorus82(p - vec3(0, 10, 0), vec2(3, 0.15)));
+    //dmin = min(dmin, distRoundBox(p - vec3(5, 0, 0), vec3(1, 1, 2), 0.05));
+    dmin = min(dmin, distMirror(p));
+    dmin = min(dmin, distTerrain(p));
     return dmin;
 }
 
 
-float getShortDistance(vec3 src, vec3 dir) {
-    float dist, fulldist = 0;
+float getShortDistance(vec3 src, vec3 dir, float start) {
+    float dist, fulldist = start;
     int step;
     for (step = 0; step < MAX_STEP; step++) {
         dist = distScene(src + dir * fulldist);
@@ -88,7 +118,8 @@ float getShortDistance(vec3 src, vec3 dir) {
     return fulldist;
 }
 
-vec3 estimateNormal(float3 z) {
+
+vec3 estimateNormal(vec3 z) {
     vec3 z1 = z + vec3(EPSILON, 0, 0);
     vec3 z2 = z - vec3(EPSILON, 0, 0);
     vec3 z3 = z + vec3(0, EPSILON, 0);
@@ -114,9 +145,9 @@ vec3 illumPhong(vec3 kd, vec3 ks, float shininess, vec3 p,
 vec3 illumination(vec3 p, vec3 eye_dir) {
     
     Light lights[LIGHTS_NUM];
-    lights[0].pos = vec3(2, 2, 1);
+    lights[0].pos = vec3(2.75, 2, 0);
     lights[0].intensity = vec3(1, 1, 1);
-    lights[1].pos = vec3(-4, 1, 1);
+    lights[1].pos = vec3(-2.75, 2, 0);
     lights[1].intensity = vec3(1, 1, 1);
     
     mat3 k;
@@ -154,6 +185,13 @@ vec3 illumination(vec3 p, vec3 eye_dir) {
             );
             shininess = 30;
         }
+    } else if (distMirror(p) < EPSILON * 2) {
+        k = mat3(
+                0, 0, 0,
+                0, 0, 0,
+                0.7, 0.7, 0.7
+        );
+        shininess = 30;
     } else {
         k = mat3(
                 0, 0.1, 0,
@@ -169,13 +207,32 @@ vec3 illumination(vec3 p, vec3 eye_dir) {
     }
     vec3 color = k[0];
     for (int i = 0; i < LIGHTS_NUM; ++i) {
-        float d = getShortDistance(lights[i].pos, normalize(p - lights[i].pos));
-        if (d > length(p - lights[i].pos) - EPSILON * 10) {
+        float d = getShortDistance(lights[i].pos, normalize(p - lights[i].pos), EPSILON * 2);
+        if (d > length(p - lights[i].pos) - EPSILON * 5) {
             color += illumPhong(k[1], k[2], shininess, p,
                     lights[i].pos, lights[i].intensity, eye_dir);
         }
     }
     return color;
+}
+
+vec3 get_color(vec3 p, vec3 ray_dir) {
+    int refl = 0;
+    float k = 1;
+    vec3 color = vec3(0, 0, 0);
+    while (distMirror(p) < EPSILON * 2 && refl < MAX_REFLECTION) {
+        color += illumination(p, ray_dir);
+        vec3 n = estimateNormal(p);
+        ray_dir = reflect(ray_dir, n);
+        float dist = getShortDistance(p, ray_dir, EPSILON * 2);
+        k *= 0.8;
+        if (dist > MAX_DISTANCE - EPSILON) {
+            return color + mix(texture(skybox, -ray_dir).xyz, vec3(0.5, 0.5, 0.5), 1 - k);
+        }
+        refl++;
+        p += ray_dir * dist;
+    }
+    return color + mix(illumination(p, ray_dir), vec3(0.5, 0.5, 0.5), 1 - k);
 }
 
 
@@ -188,13 +245,13 @@ void main(void) {
     vec3 ray_dir = EyeRayDir(coord, screenSize);
     ray_dir = float3x3(g_rotate) * ray_dir;
     
-    float dist = getShortDistance(ray_pos, ray_dir);
+    float dist = getShortDistance(ray_pos, ray_dir, 0);
     
     
     
     if (dist < MAX_DISTANCE - EPSILON) {
         ray_pos += ray_dir * dist;
-        fragColor = vec4(illumination(ray_pos, ray_dir), 1);
+        fragColor = vec4(get_color(ray_pos, ray_dir), 1);
         //dist = length(ray_pos - vec3(5, 5, 0));
         /*if (distTerrain(ray_pos) < EPSILON * 2) {
             //fragColor = vec4(illumPhong(vec3(0,0,0), vec3(0.1,0.35,0.1), vec3(0.45,0.55,0.45),
@@ -208,24 +265,10 @@ void main(void) {
             //fragColor = vec4(vec3(0.5, 0.5, 0.75) / (dist * dist), 1);
         }*/
     } else {
-        ray_dir.y = -ray_dir.y;
-        fragColor = texture(skybox, ray_dir);
+        //ray_dir.y = -ray_dir.y;
+        fragColor = texture(skybox, -ray_dir);
         //fragColor = vec4(0, 0, 0, 1);
     }
-    
-    /*float tmin = 1e38f;
-    float tmax = 0;
-
-    if(!RayBoxIntersection(ray_pos, ray_dir, g_bBoxMin, g_bBoxMax, tmin, tmax))
-    {
-        fragColor = g_bgColor;
-        return;
-    }
-
-    float alpha = 1.0f;
-    float3 color = RayMarchConstantFog(tmin, tmax, alpha);
-    fragColor = float4(color,0)*(1.0f-alpha) + g_bgColor*alpha;*/
-
 }
 
 
