@@ -21,6 +21,7 @@ using namespace LiteMath;
 float3 position(0, 2, 7);
 float cam_rot[2] = { 0, 0 };
 int mx = 0, my = 0;
+int litemode = 0;
 
 void windowResize(GLFWwindow* window, int width, int height) {
     WIDTH  = width;
@@ -52,6 +53,12 @@ void control(GLFWwindow* window) {
     double speed = MOVE_SPEED;
     currentTime = glfwGetTime();
     deltaTime = currentTime - lastTime;
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
+        litemode = 0;
+    }
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
+        litemode = 1;
+    }
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
@@ -145,32 +152,6 @@ unsigned char * load_tga_custom(const char *t_file, int & width, int & height) {
     // Close file after done
     fclose(_file);
     return image;
-/*
-    // Declare variable to hold texture ID
-    GLuint tex_id;
-
-    // Generate texture and return it's ID
-    glGenTextures(1, &tex_id);
-
-    // And bind it
-    glBindTexture(GL_TEXTURE_2D, tex_id);
-
-    // Give the image to OpenGL
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, image);
-
-    delete [] image;
-
-    // Set texture mapping mode
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    // Set texture filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    // If everything is OK, return txeture ID then.
-    return tex_id;*/
 }
 
 GLuint loadCubemap(std::vector<std::string> faces)
@@ -309,6 +290,7 @@ int main(int argc, char** argv) {
 
         float time = glfwGetTime();
 
+        program.SetUniform("g_litemode", litemode);
         program.SetUniform("g_time", time);
         program.SetUniform("g_position", position);
         program.SetUniform("g_rotate", camRotMatrix);

@@ -13,12 +13,14 @@ struct Light {
 };
 
 Light lights[2] = Light[2](
-        Light(vec3(2.75, 2, 0), vec3(1, 1, 1)),
-        Light(vec3(-2.75, 2, 0), vec3(1, 1, 1)));
+        Light(vec3(0, 4, 3), vec3(1, 1, 1)),
+        Light(vec3(0, 2, 0), vec3(1, 1, 1)));
 
 in vec2 fragmentTexCoord;
 
 layout(location = 0) out vec4 fragColor;
+
+uniform int g_litemode;
 
 uniform int g_screenWidth;
 uniform int g_screenHeight;
@@ -65,39 +67,35 @@ float distTorus82(vec3 p, vec2 t) {
     return length8(q) - t.y;
 }
 
-float distHexPrism(vec3 p, vec2 h) {
-    vec3 q = abs(p);
-    return max(q.z - h.y, max((q.x*0.866025 + q.y*0.5), q.y) - h.x);
-}
-
-float distHexPrism2(vec3 p, vec2 h) {
+float distHexPrismRep(vec3 p, vec2 h) {
     vec3 q = abs(mod(p, vec3(4, 4, 0)) - vec3(2, 2, 0));
     return max(q.z - h.y, max((q.x*0.866025 + q.y*0.5), q.y) - h.x);
 }
 
 float distTerrain(vec3 p) {
-    float dmin = distHexPrism2((p - vec3(0, -4, 1)).xzy, vec2(1, 2));
-    dmin = min(dmin, distHexPrism2((p - vec3(0, -3.7, -1)).xzy, vec2(1, 2)));
-    dmin = min(dmin, distHexPrism2((p - vec3(2, -3.85, 0)).xzy, vec2(1, 2)));
-    dmin = min(dmin, distHexPrism2((p - vec3(2, -3.5, 2)).xzy, vec2(1, 2)));
+    if (g_litemode > 0) {
+        return distRoundBox(p - vec3(0, -1.25, 0), vec3(4, 0.25, 4), 0.05);
+    }
+    float dmin = distHexPrismRep((p - vec3(0, -4, 1)).xzy, vec2(1, 2));
+    dmin = min(dmin, distHexPrismRep((p - vec3(0, -3.7, -1)).xzy, vec2(1, 2)));
+    dmin = min(dmin, distHexPrismRep((p - vec3(2, -3.85, 0)).xzy, vec2(1, 2)));
+    dmin = min(dmin, distHexPrismRep((p - vec3(2, -3.5, 2)).xzy, vec2(1, 2)));
     return dmin;
 }
 
 float distMirror(vec3 p) {
     return distSphere(p - vec3(0, 2, 0), 1);
-            //distRoundBox(p - vec3(2, 5, -1), vec3(2, 0.5, 2), 0.05));
 }
 
 float distLens(vec3 p) {
-    //return distRoundBox(p - vec3(0, 7, -2), vec3(2, 2, 2), 0.01);
     return abs(max(distSphere(p - vec3(0, 9, 5), 5.5),
             distRoundBox(p - vec3(0, 9, -1), vec3(3, 3, 1), 0.01)));
-            //distSphere(p - vec3(0, 7, -1.5), 2)));
 }
 
 float distRings(vec3 p) {
-    return min(distTorus82(rotateX(p - vec3(0, 2, 0), -0.5), vec2(3, 0.15)),
-            distTorus82(rotateX(p - vec3(0, 2, 0), -1), vec2(3, 0.15)));
+    float dmin = distTorus82((p - vec3(0, 9, 0)).xzy, vec2(2.45, 0.15));
+    dmin = min(dmin, distTorus82(rotateX(p - vec3(0, 2, 0), -0.5), vec2(3, 0.15)));
+    return min(dmin, distTorus82(rotateX(p - vec3(0, 2, 0), -1), vec2(3, 0.15)));
 }
 
 float distScene(vec3 p) {
@@ -105,11 +103,10 @@ float distScene(vec3 p) {
     dmin = min(dmin, sdTriPrism(p - vec3(0, 9, 20), vec2(1, 1)));
     //dmin = min(dmin, sdTriPrism(p - vec3(0, 7, -20), vec2(1, 1)));
     dmin = min(dmin, distRings(p));
-    dmin = min(dmin, distTorus82((p - vec3(0, 9, 0)).xzy, vec2(2.45, 0.15)));
     //dmin = min(dmin, distRoundBox(p - vec3(5, 0, 0), vec3(1, 1, 2), 0.05));
     dmin = min(dmin, distMirror(p));
     dmin = min(dmin, distLens(p));
-    //dmin = min(dmin, distTerrain(p));
+    dmin = min(dmin, distTerrain(p));
     return dmin;
 }
 
@@ -170,7 +167,14 @@ vec3 illumination(vec3 p, vec3 eye_dir, vec3 n) {
     mat3 k;
     float shininess;
     if (distTerrain(p) < EPSILON * 2) {
-        if (distHexPrism2((p - vec3(0, -4, 1)).xzy, vec2(1, 2)) < EPSILON * 2) {
+        if (g_litemode > 0) {
+            k = mat3(
+                    0.05375, 0.05, 0.06625,
+                    0.18275, 0.17, 0.22525,
+                    0.332741, 0.328634, 0.346435
+            );
+            shininess = 30;
+        } else if (distHexPrismRep((p - vec3(0, -4, 1)).xzy, vec2(1, 2)) < EPSILON * 2) {
             k = mat3(
                     0.3, 0.15, 0.15,
                     0.7, 0.4, 0.4,
@@ -178,7 +182,7 @@ vec3 illumination(vec3 p, vec3 eye_dir, vec3 n) {
             );
             k[0] += vec3(0.3, 0.05, 0.05) * sin(g_time + 2.1);
             shininess = 60;
-        } else if (distHexPrism2((p - vec3(0, -3.7, -1)).xzy, vec2(1, 2)) < EPSILON * 2) {
+        } else if (distHexPrismRep((p - vec3(0, -3.7, -1)).xzy, vec2(1, 2)) < EPSILON * 2) {
             k = mat3(
                     0.2, 0.2, 0.15,
                     0.5, 0.5, 0.35,
@@ -186,7 +190,7 @@ vec3 illumination(vec3 p, vec3 eye_dir, vec3 n) {
             );
             k[0] += vec3(0.2, 0.2, 0.05) * sin(g_time);
             shininess = 60;
-        } else if (distHexPrism2((p - vec3(2, -3.85, 0)).xzy, vec2(1, 2)) < EPSILON * 2) {
+        } else if (distHexPrismRep((p - vec3(2, -3.85, 0)).xzy, vec2(1, 2)) < EPSILON * 2) {
             k = mat3(
                     0.05, 0.15, 0.3,
                     0.3, 0.4, 0.7,
@@ -225,7 +229,6 @@ vec3 illumination(vec3 p, vec3 eye_dir, vec3 n) {
         shininess = 25;
     }
     vec3 color = k[0];
-    //!!!!p += n * EPSILON * 2;
     for (int i = 0; i < LIGHTS_NUM; ++i) {
         float d = getShortDistance(lights[i].pos,
                 normalize(p + n * EPSILON * 2 - lights[i].pos), EPSILON * 2);
@@ -260,7 +263,9 @@ vec3 get_color(vec3 p, vec3 ray_dir) {
         //n = estimateNormal(p);
         color += illumination(p, ray_dir, n);
         ray_dir = myrefract(ray_dir, n, 1.52);
-        float dist = getShortDistance(p, ray_dir, EPSILON * 2);
+        //ray_dir = refract(ray_dir, n, 1 / 1.52);
+        //return color + mix(texture(skybox, -ray_dir).xyz, vec3(0.5, 0.5, 0.5), 1 - k);
+        float dist = getShortDistance(p, ray_dir, EPSILON * 5);
         k *= 0.8;
         if (dist > MAX_DISTANCE - EPSILON) {
             return color + mix(texture(skybox, -ray_dir).xyz, vec3(0.5, 0.5, 0.5), 1 - k);
@@ -286,6 +291,7 @@ void main(void) {
     
     if (dist < MAX_DISTANCE - EPSILON) {
         ray_pos += ray_dir * dist;
+        lights[1].pos = vec3(cos(g_time / 4.0) * 4.0, 2, sin(g_time / 4.0) * 4.0);
         fragColor = vec4(get_color(ray_pos, ray_dir), 1);
         //dist = length(ray_pos - vec3(5, 5, 0));
         /*if (distTerrain(ray_pos) < EPSILON * 2) {
