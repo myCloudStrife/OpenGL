@@ -7,15 +7,6 @@ const int MAX_REFLECTION = 4;
 const int MAX_REFRACTION = 4;
 const int LIGHTS_NUM = 2;
 
-struct Light {
-    vec3 pos;
-    vec3 intensity;
-};
-
-Light lights[2] = Light[2](
-        Light(vec3(0, 4, 3), vec3(1, 1, 1)),
-        Light(vec3(0, 2, 0), vec3(1, 1, 1)));
-
 in vec2 fragmentTexCoord;
 
 layout(location = 0) out vec4 fragColor;
@@ -32,6 +23,17 @@ uniform vec3 g_position;
 
 uniform samplerCube skybox;
 
+struct Light {
+    vec3 pos;
+    vec3 intensity;
+};
+
+Light lights[2] = Light[2](
+        Light(vec3(0, 4, 3), vec3(1, 1, 1)),
+        Light(vec3(0, 2, 0), vec3(1, 1, 1)));
+
+int FRACTAL_ITERATIONS = 4;
+
 vec3 EyeRayDir(vec2 coord, vec2 size) {
     float fov = 3.141592654f / 2.0f; //90 degrees
     vec3 ray_dir = vec3(coord - size / 2.0f, -size.x / tan(fov / 2.0f));
@@ -42,10 +44,35 @@ vec3 rotateX(vec3 p, float phi) {
     return vec3(p.x, p.y * cos(phi) - p.z * sin(phi), p.z * cos(phi) + p.y * sin(phi));
 }
 
-float sdTriPrism( vec3 p, vec2 h )
-{
-    vec3 q = abs(p);
-    return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);
+vec3 rotateZ(vec3 p, float phi) {
+    return vec3(p.x * cos(phi) - p.y * sin(phi), p.y * cos(phi) + p.x * sin(phi), p.z);;
+}
+
+float length8(vec2 p) {
+    vec2 pp = p * p;
+    vec2 p4 = pp * pp;
+    return pow(dot(p4, p4), 0.125);
+}
+
+vec2 fractalSphere(vec3 p, float r) {
+    vec2 dist_lvl = vec2(1e38, 0.0);
+    for (int i = 0; i < FRACTAL_ITERATIONS; i++)
+    {
+        p = rotateX(p, g_time / 4);
+        float d = length(p) - r;
+        vec3 hole = abs(p) - r * vec3(0.4082);
+        d = max(d, -(length(hole) - r * 0.5));
+        if (dist_lvl.x > d) {
+            dist_lvl = vec2(d, i);
+        }
+        p = vec3(hole.z, hole.y, -hole.x);
+        r *= 0.333;
+    }
+    float d = length(p) - r;
+    if (dist_lvl.x > d) {
+        dist_lvl = vec2(d, FRACTAL_ITERATIONS);
+    }
+    return dist_lvl;
 }
 
 float distSphere(vec3 p, float r) {
@@ -54,12 +81,6 @@ float distSphere(vec3 p, float r) {
 
 float distRoundBox(vec3 p, vec3 b, float r) {
     return length(max(abs(p) - b, 0)) - r;
-}
-
-float length8(vec2 p) {
-    vec2 pp = p * p;
-    vec2 p4 = pp * pp;
-    return pow(dot(p4, p4), 0.125);
 }
 
 float distTorus82(vec3 p, vec2 t) {
@@ -84,7 +105,7 @@ float distTerrain(vec3 p) {
 }
 
 float distMirror(vec3 p) {
-    return distSphere(p - vec3(0, 2, 0), 1);
+    return distSphere(p - vec3(0, 2, 0), 1.25);
 }
 
 float distLens(vec3 p) {
@@ -98,14 +119,18 @@ float distRings(vec3 p) {
     return min(dmin, distTorus82(rotateX(p - vec3(0, 2, 0), -1), vec2(3, 0.15)));
 }
 
+float distPillar(vec3 p) {
+    p.x = abs(p.x);
+    return distRoundBox(rotateZ(p - vec3(2.87, 3.73, 0), -0.08), vec3(0.1, 5.25, 0.1), 0.04);
+}
+
 float distScene(vec3 p) {
     float dmin = 1e38;
-    dmin = min(dmin, sdTriPrism(p - vec3(0, 9, 20), vec2(1, 1)));
-    //dmin = min(dmin, sdTriPrism(p - vec3(0, 7, -20), vec2(1, 1)));
     dmin = min(dmin, distRings(p));
-    //dmin = min(dmin, distRoundBox(p - vec3(5, 0, 0), vec3(1, 1, 2), 0.05));
     dmin = min(dmin, distMirror(p));
     dmin = min(dmin, distLens(p));
+    dmin = min(dmin, fractalSphere(p - vec3(0, 9, 20), 5).x);
+    dmin = min(dmin, distPillar(p));
     dmin = min(dmin, distTerrain(p));
     return dmin;
 }
@@ -213,7 +238,7 @@ vec3 illumination(vec3 p, vec3 eye_dir, vec3 n) {
                 0.7, 0.7, 0.7
         );
         shininess = 30;
-    } else if (distRings(p) < EPSILON * 2){
+    } else if (distRings(p) < EPSILON * 2 || distPillar(p) < EPSILON * 2){
         k = mat3(
                 0.19225, 0.19225, 0.19225,
                 0.50754, 0.50754, 0.50754,
@@ -221,12 +246,23 @@ vec3 illumination(vec3 p, vec3 eye_dir, vec3 n) {
         );
         shininess = 40;
     } else {
-        k = mat3(
-                0, 0.05, 0.05,
-                0.4, 0.5, 0.5,
-                0.04, 0.7, 0.7
-        );
-        shininess = 25;
+        vec2 dist_lvl = fractalSphere(p - vec3(0, 9, 20), 5);
+        if (dist_lvl.x < EPSILON * 2) {
+            float alpha = dist_lvl.y / FRACTAL_ITERATIONS;
+            k = mat3(
+                    0.3 * alpha, 0.1 * (1 - alpha), 0.1 * (1 - alpha),
+                    0.5 * alpha + 0.2, 0.2 * (1 - alpha), 0.2 * (1 - alpha),
+                    0.5 * alpha + 0.2, 0.3 * (1 - alpha), 0.3 * (1 - alpha)
+            );
+            shininess = 25;
+        } else {
+            k = mat3(
+                    0, 0.05, 0.05,
+                    0.4, 0.5, 0.5,
+                    0.04, 0.7, 0.7
+            );
+            shininess = 25;
+        }
     }
     vec3 color = k[0];
     for (int i = 0; i < LIGHTS_NUM; ++i) {
@@ -244,8 +280,9 @@ vec3 get_color(vec3 p, vec3 ray_dir) {
     int ref = 0;
     float k = 1;
     vec3 color = vec3(0, 0, 0);
-    vec3 n = estimateNormal(p);
+    vec3 n;
     while (distMirror(p) < EPSILON * 2 && ref < MAX_REFLECTION) {
+        n = estimateNormal(p);
         color += illumination(p, ray_dir, n);
         ray_dir = reflect(ray_dir, n);
         float dist = getShortDistance(p, ray_dir, EPSILON * 2);
@@ -255,25 +292,21 @@ vec3 get_color(vec3 p, vec3 ray_dir) {
         }
         ref++;
         p += ray_dir * dist;
-        n = estimateNormal(p);
     }
     ref = 0;
     while (distLens(p) < EPSILON * 2 && ref < MAX_REFRACTION) {
         n = lensNormal(p);
-        //n = estimateNormal(p);
         color += illumination(p, ray_dir, n);
         ray_dir = myrefract(ray_dir, n, 1.52);
-        //ray_dir = refract(ray_dir, n, 1 / 1.52);
-        //return color + mix(texture(skybox, -ray_dir).xyz, vec3(0.5, 0.5, 0.5), 1 - k);
         float dist = getShortDistance(p, ray_dir, EPSILON * 5);
-        k *= 0.8;
+        k *= 0.9;
         if (dist > MAX_DISTANCE - EPSILON) {
             return color + mix(texture(skybox, -ray_dir).xyz, vec3(0.5, 0.5, 0.5), 1 - k);
         }
         ref++;
         p += ray_dir * dist;
-        n = estimateNormal(p);
     }
+    n = estimateNormal(p);
     return color + mix(illumination(p, ray_dir, n), vec3(0.5, 0.5, 0.5), 1 - k);
 }
 
@@ -287,28 +320,18 @@ void main(void) {
     vec3 ray_dir = EyeRayDir(coord, screenSize);
     ray_dir = mat3(g_rotate) * ray_dir;
     
+    if (g_litemode > 0) {
+        FRACTAL_ITERATIONS = 2;
+    }
+    
     float dist = getShortDistance(ray_pos, ray_dir, 0);
     
     if (dist < MAX_DISTANCE - EPSILON) {
         ray_pos += ray_dir * dist;
         lights[1].pos = vec3(cos(g_time / 4.0) * 4.0, 2, sin(g_time / 4.0) * 4.0);
         fragColor = vec4(get_color(ray_pos, ray_dir), 1);
-        //dist = length(ray_pos - vec3(5, 5, 0));
-        /*if (distTerrain(ray_pos) < EPSILON * 2) {
-            //fragColor = vec4(illumPhong(vec3(0,0,0), vec3(0.1,0.35,0.1), vec3(0.45,0.55,0.45),
-            //        25, ray_pos, vec3(5, 5, 0), vec3(0.8, 0.8, 0.8), ray_dir), 1);
-            fragColor = vec4(illumination(ray_pos, ray_dir), 1);
-            //fragColor = vec4(vec3(0.2, 0.7, 0.3) * (0.5 + 1 / dist), 1);
-        } else {
-            fragColor = vec4(illumPhong(vec3(0,0.05,0.05), vec3(0.4,0.5,0.5), vec3(0.04,0.7,0.7),
-                    7.8, ray_pos, vec3(5, 5, 0), vec3(0.8, 0.8, 0.8), ray_dir), 1);
-            //fragColor = vec4(1,0,0,1);
-            //fragColor = vec4(vec3(0.5, 0.5, 0.75) / (dist * dist), 1);
-        }*/
     } else {
-        //ray_dir.y = -ray_dir.y;
         fragColor = texture(skybox, -ray_dir);
-        //fragColor = vec4(0, 0, 0, 1);
     }
 }
 

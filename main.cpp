@@ -20,7 +20,6 @@ using namespace LiteMath;
 
 float3 position(0, 2, 7);
 float cam_rot[2] = { 0, 0 };
-int mx = 0, my = 0;
 int litemode = 0;
 
 void windowResize(GLFWwindow* window, int width, int height) {
@@ -32,11 +31,10 @@ static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
     xpos *= -ROTATE_SPEED;
     ypos *= ROTATE_SPEED;
 
-    int x1 = int(xpos);
-    int y1 = int(ypos);
+    static float mx = xpos, my = ypos;
 
-    cam_rot[0] -= 0.005f*(y1 - my);
-    cam_rot[1] -= 0.005f*(x1 - mx);
+    cam_rot[0] -= 0.005f*(ypos - my);
+    cam_rot[1] -= 0.005f*(xpos - mx);
 
     if (cam_rot[0] > M_PI_2) {
         cam_rot[0] = M_PI_2;
@@ -44,8 +42,8 @@ static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
         cam_rot[0] = -M_PI_2;
     }
 
-    mx = int(xpos);
-    my = int(ypos);
+    mx = xpos;
+    my = ypos;
 }
 
 void control(GLFWwindow* window) {
@@ -161,17 +159,13 @@ GLuint loadCubemap(std::vector<std::string> faces)
     glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
 
     int width, height;
-    for (unsigned int i = 0; i < faces.size(); i++)
-    {
+    for (unsigned int i = 0; i < faces.size(); i++) {
         unsigned char *data = load_tga_custom(faces[i].c_str(), width, height);
-        if (data)
-        {
+        if (data) {
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                         0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
+                    0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
             delete [] data;
-        }
-        else
-        {
+        } else {
             std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
             delete [] data;
         }
