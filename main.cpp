@@ -14,7 +14,7 @@ constexpr double MOVE_SPEED = 3.0;
 constexpr double MOVE_SPEED_WITH_SHIFT = 9.0;
 constexpr double ROTATE_SPEED = 1.5;
 
-static GLsizei WIDTH = 768, HEIGHT = 512; //размеры окна
+static GLsizei WIDTH = 512, HEIGHT = 512; //размеры окна
 
 using namespace LiteMath;
 
@@ -52,10 +52,10 @@ void control(GLFWwindow* window) {
     currentTime = glfwGetTime();
     deltaTime = currentTime - lastTime;
     if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
-        litemode = 0;
-    }
-    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
         litemode = 1;
+    }
+    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) {
+        litemode = 0;
     }
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
