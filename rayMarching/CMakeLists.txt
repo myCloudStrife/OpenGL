@@ -4,25 +4,25 @@ project(main)
 set(CMAKE_CXX_STANDARD 11)
 
 set(SOURCE_FILES
-    common.h
-    glad.c
+    ../common.h
+    ../glad.c
     main.cpp
     ShaderProgram.h
     ShaderProgram.cpp)
 
 set(ADDITIONAL_INCLUDE_DIRS
-        dependencies/include/GLAD)
+        ../dependencies/include/GLAD)
 set(ADDITIONAL_LIBRARY_DIRS
-        dependencies/lib)   
+        ../dependencies/lib)   
 set(ADDITIONAL_RUNTIME_LIBRARY_DIRS
-        dependencies/bin)   
+        ../dependencies/bin)   
 
 set (CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG}")
 
 if(WIN32)
   set(ADDITIONAL_INCLUDE_DIRS 
         ${ADDITIONAL_INCLUDE_DIRS}
-        dependencies/include)
+        ../dependencies/include)
   link_directories(${ADDITIONAL_LIBRARY_DIRS})
 else()
   list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
