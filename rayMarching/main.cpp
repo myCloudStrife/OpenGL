@@ -1,5 +1,5 @@
 //internal includes
-#include "common.h"
+#include "../common.h"
 #include "ShaderProgram.h"
 #include "LiteMath.h"
 

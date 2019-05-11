@@ -2,7 +2,7 @@
 #define SHADERPROGRAM_H
 
 #include <unordered_map>
-#include "common.h"
+#include "../common.h"
 
 #include "LiteMath.h"
 
