@@ -1,5 +1,5 @@
 //internal includes
-#include "../common.h"
+#include "common.h"
 #include "ShaderProgram.h"
 #include "LiteMath.h"
 
@@ -217,12 +217,12 @@ int main(int argc, char** argv) {
     }
 
     std::vector<std::string> faces = {
-        "texture/my_darkskies_ft.tga",
-        "texture/my_darkskies_bk.tga",
-        "texture/my_darkskies_dn.tga",
-        "texture/my_darkskies_up.tga",
-        "texture/my_darkskies_rt.tga",
-        "texture/my_darkskies_lf.tga"
+        "my_darkskies_ft.tga",
+        "my_darkskies_bk.tga",
+        "my_darkskies_dn.tga",
+        "my_darkskies_up.tga",
+        "my_darkskies_rt.tga",
+        "my_darkskies_lf.tga"
     };
     GLuint cubemapTexture = loadCubemap(faces);
 

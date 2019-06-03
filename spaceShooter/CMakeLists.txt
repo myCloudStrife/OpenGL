@@ -14,14 +14,12 @@ set(ADDITIONAL_INCLUDE_DIRS
         ../dependencies/include/GLAD
         ../dependencies/include/GLM
         ../dependencies/include/irrklang
-#        dependencies/include/GLI
         ..
     )
 set(ADDITIONAL_LIBRARY_DIRS
-        ../dependencies/lib/*)
+        ../dependencies/lib/)
 set(ADDITIONAL_RUNTIME_LIBRARY_DIRS
         ${PROJECT_SOURCE_DIR}/../dependencies/bin/libIrrKlang.so
-#        ${PROJECT_SOURCE_DIR}/../dependencies/bin/ikpMP3.so
 )
 
 set (CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG}")
@@ -43,7 +41,11 @@ find_package(OpenGL REQUIRED)
 add_executable(main ${SOURCE_FILES})
 
 target_include_directories(main PRIVATE ${OPENGL_INCLUDE_DIR})
-add_custom_command(TARGET main POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/shaders" "${PROJECT_BINARY_DIR}")
+add_custom_command(TARGET main POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/shaders" "${PROJECT_BINARY_DIR}/shaders"
+                                          COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/textures" "${PROJECT_BINARY_DIR}/textures"
+                                          COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/source" "${PROJECT_BINARY_DIR}/source"
+                                          COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/audio" "${PROJECT_BINARY_DIR}/audio"
+                                          COMMAND ${CMAKE_COMMAND} -E copy "${PROJECT_SOURCE_DIR}/../dependencies/bin/ikpMP3.so" "${PROJECT_BINARY_DIR}/ikpMP3.so")
 
 if(WIN32)
   add_custom_command(TARGET main POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/dependencies/bin" $<TARGET_FILE_DIR:main>)
@@ -52,7 +54,6 @@ if(WIN32)
   target_link_libraries(main LINK_PUBLIC ${OPENGL_gl_LIBRARY} glfw3dll)
 else()
   target_compile_options(main PRIVATE -Wnarrowing)
-  target_link_libraries(main LINK_PUBLIC ${OPENGL_gl_LIBRARY} ${ADDITIONAL_RUNTIME_LIBRARY_DIRS} assimp glfw rt dl)
-#  target_link_libraries(main ${ADDITIONAL_RUNTIME_LIBRARY_DIRS})
+  target_link_libraries(main LINK_PUBLIC ${OPENGL_gl_LIBRARY} ${ADDITIONAL_RUNTIME_LIBRARY_DIRS} glfw rt dl)
 endif()
 

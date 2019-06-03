@@ -48,23 +48,6 @@ ISoundEngine* engine;
 double Health = MAX_HEALTH;
 unsigned Score = 0;
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) {
-    // Когда пользователь нажимает ESC, мы устанавливаем свойство WindowShouldClose в true, 
-    // и приложение после этого закроется
-    if(key == GLFW_KEY_E && action == GLFW_PRESS) {
-        //glfwSetWindowShouldClose(window, GL_TRUE);
-        printf("E pressed\n");
-    }
-    if(key == GLFW_KEY_E && action == GLFW_RELEASE) {
-        //glfwSetWindowShouldClose(window, GL_TRUE);
-        printf("E released\n");
-    }
-    if(key == GLFW_KEY_E && action == GLFW_REPEAT) {
-        //glfwSetWindowShouldClose(window, GL_TRUE);
-        printf("E repeated\n");
-    }
-}
-
 void control(GLFWwindow* window) {
     bool left = glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS;
     bool right = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
@@ -285,8 +268,8 @@ int main(int argc, char** argv) {
 
     //запрашиваем контекст opengl версии 3.3
     glfwWindowHint(GLFW_SAMPLES, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 

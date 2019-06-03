@@ -39,7 +39,9 @@ find_package(OpenGL REQUIRED)
 add_executable(main ${SOURCE_FILES})
 
 target_include_directories(main PRIVATE ${OPENGL_INCLUDE_DIR})
-add_custom_command(TARGET main POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/shaders" "${PROJECT_BINARY_DIR}")
+add_custom_command(TARGET main POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/shaders" "${PROJECT_BINARY_DIR}/shaders"
+                                          COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/textures" "${PROJECT_BINARY_DIR}/textures"
+                                          COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/models" "${PROJECT_BINARY_DIR}/models")
 
 if(WIN32)
   add_custom_command(TARGET main POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/dependencies/bin" $<TARGET_FILE_DIR:main>)
@@ -48,6 +50,6 @@ if(WIN32)
   target_link_libraries(main LINK_PUBLIC ${OPENGL_gl_LIBRARY} glfw3dll)
 else()
   target_compile_options(main PRIVATE -Wnarrowing)
-  target_link_libraries(main LINK_PUBLIC ${OPENGL_gl_LIBRARY} assimp glfw rt dl)
+  target_link_libraries(main LINK_PUBLIC ${OPENGL_gl_LIBRARY} glfw rt dl)
 endif()
 

@@ -11,7 +11,8 @@ set(SOURCE_FILES
     ShaderProgram.cpp)
 
 set(ADDITIONAL_INCLUDE_DIRS
-        ../dependencies/include/GLAD)
+        ../dependencies/include/GLAD
+        ..)
 set(ADDITIONAL_LIBRARY_DIRS
         ../dependencies/lib)   
 set(ADDITIONAL_RUNTIME_LIBRARY_DIRS
@@ -36,8 +37,8 @@ find_package(OpenGL REQUIRED)
 add_executable(main ${SOURCE_FILES})
 
 target_include_directories(main PRIVATE ${OPENGL_INCLUDE_DIR})
-add_custom_command(TARGET main POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/shaders" "${PROJECT_BINARY_DIR}")
-
+add_custom_command(TARGET main POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/shaders" "${PROJECT_BINARY_DIR}"
+                                          COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/texture" "${PROJECT_BINARY_DIR}")
 if(WIN32)
   add_custom_command(TARGET main POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/dependencies/bin" $<TARGET_FILE_DIR:main>)
   #set(CMAKE_MSVCIDE_RUN_PATH ${ADDITIONAL_RUNTIME_LIBRARY_DIRS})
