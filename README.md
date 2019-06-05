@@ -8,7 +8,7 @@ There are 3 tasks in follow folders:
 
 Each folder contain screenshots and readme.
 
-You can build applications directly in this folders with follow commands:
+You can build applications directly in this folders on Linux with follow commands:
 ```
 mkdir build
 cd build
@@ -28,3 +28,7 @@ All models I took from [sketchfab.com](https://sketchfab.com/feed) at follow lin
 * https://sketchfab.com/3d-models/free-sci-fi-fighter-dca1c832ee574e2fa2cdaa06515f66a9
 * https://sketchfab.com/3d-models/death-row-spaceship-712057c4562d413594beb723f6ec6dd6
 
+Screenshots:
+![rayMarching/screen01.jpg](rayMarching/screen01.jpg)
+![shadowMap/screen01.jpg](shadowMap/screen01.jpg)
+![spaceShooter/screen01.jpg](spaceShooter/screen01.jpg)
